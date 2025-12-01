@@ -5,7 +5,11 @@ import {
     Typography,
     TextField,
     Button,
-    Link
+    Link,
+    Dialog,
+    DialogActions,
+    DialogContent,
+    DialogTitle
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 
@@ -14,15 +18,57 @@ const LoginClientePage = () => {
     const [usuario, setUsuario] = useState('');
     const [senha, setSenha] = useState('');
     const [erroLogin, setErroLogin] = useState(false);
+    const [openForgot, setOpenForgot] = useState(false);
+    const [email, setEmail] = useState('');
 
-    const handleLogin = (e) => {
-        e.preventDefault();
+    // Handle login request
+    const handleLogin = async (e) => {
+    e.preventDefault();
 
-        if (usuario.trim() === 'cliente' && senha.trim() === '123') {
+    try {
+        const response = await fetch('http://localhost:3030/api/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                email: usuario.toLowerCase().trim(),
+                password: senha
+            })
+        });
+
+        const data = await response.json();
+
+        // ✅ FIX: backend returns { message: 'Login success', user: {...} }
+        // So we should check for response.ok or data.user instead of data.success
+        if (response.ok && data.user) {
             setErroLogin(false);
             navigate('/cliente/inicio');
         } else {
             setErroLogin(true);
+        }
+    } catch (error) {
+        console.error(error);
+        setErroLogin(true);
+    }
+    };
+    // Handle forgot password
+    const handleForgotPassword = async () => {
+        try {
+            const response = await fetch('http://localhost:3000/api/forgot-password', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email })
+            });
+
+            if (response.ok) {
+                alert('Email enviado com instruções para redefinir sua senha.');
+                setOpenForgot(false);
+                setEmail('');
+            } else {
+                alert('Erro ao enviar o email.');
+            }
+        } catch (error) {
+            console.error(error);
+            alert('Erro ao enviar o email.');
         }
     };
 
@@ -106,16 +152,10 @@ const LoginClientePage = () => {
                 >
                     <Link
                         href="#"
-                        onClick={(e) => e.preventDefault()}
-                        underline="none"
-                        color="text.secondary"
-                        sx={{ fontSize: '0.9rem' }}
-                    >
-                        Primeiro acesso?
-                    </Link>
-                    <Link
-                        href="#"
-                        onClick={(e) => e.preventDefault()}
+                        onClick={(e) => {
+                            e.preventDefault();
+                            setOpenForgot(true);
+                        }}
                         underline="none"
                         color="text.secondary"
                         sx={{ fontSize: '0.9rem' }}
@@ -124,6 +164,27 @@ const LoginClientePage = () => {
                     </Link>
                 </Box>
             </Paper>
+
+            {/* Forgot Password Dialog */}
+            <Dialog open={openForgot} onClose={() => setOpenForgot(false)}>
+                <DialogTitle>Recuperar senha</DialogTitle>
+                <DialogContent>
+                    <TextField
+                        autoFocus
+                        margin="dense"
+                        label="Email"
+                        type="email"
+                        fullWidth
+                        variant="outlined"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                    />
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setOpenForgot(false)}>Cancelar</Button>
+                    <Button onClick={handleForgotPassword}>Enviar</Button>
+                </DialogActions>
+            </Dialog>
         </Box>
     );
 };
